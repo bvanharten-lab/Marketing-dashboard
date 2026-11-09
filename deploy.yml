@@ -1,0 +1,37 @@
+name: Deploy naar GitHub Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configuratie invullen (repository variables API_URL en CLIENT_ID)
+        env:
+          API_URL: ${{ vars.API_URL }}
+          CLIENT_ID: ${{ vars.CLIENT_ID }}
+        run: |
+          mkdir -p dist
+          sed -e "s|__API_URL__|${API_URL}|g" -e "s|__CLIENT_ID__|${CLIENT_ID}|g" index.html > dist/index.html
+          cp .nojekyll dist/
+          if [ -z "$API_URL" ] || [ -z "$CLIENT_ID" ]; then echo "::warning::API_URL en/of CLIENT_ID zijn nog niet gezet (Settings → Secrets and variables → Actions → Variables). De site toont dan 'Geen verbinding'."; fi
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deployment
+        uses: actions/deploy-pages@v4
